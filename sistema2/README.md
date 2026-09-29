@@ -25,7 +25,7 @@ Importa `BASE/db_ventas.sql` en el esquema `trinidad` desde la herramienta SQL d
 
 ## Despliegue
 
-`npm run build` genera el frontend estático en `dist/`. La API de Express debe desplegarse como servicio Node.js con conexión a TiDB; servir únicamente `dist/` desde Vercel no habilita las rutas `/api` ni conserva las sesiones. No configures credenciales en el código fuente: añádelas como variables de entorno en el proveedor del backend.
+En Vercel, importa el repositorio y establece `sistema2` como **Root Directory**. `npm run build` genera el frontend en `dist/` y `api/[...path].js` expone las rutas Express como una Function. Configura `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_SSL=true` y un `SESSION_SECRET` aleatorio en Environment Variables antes de desplegar. No publiques esas credenciales.
 
 ## Funciones
 
