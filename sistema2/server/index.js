@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import express from 'express';
-import session from 'express-session';
+import cookieSession from 'cookie-session';
 import mysql from 'mysql2/promise';
 
 const app = express();
@@ -18,12 +18,18 @@ const pool = mysql.createPool({
 });
 
 app.use(express.json());
-app.use(session({
+const sessionSecret = process.env.SESSION_SECRET || 'solo-desarrollo-cambia-este-secreto-local';
+if (process.env.NODE_ENV === 'production' && !process.env.SESSION_SECRET) {
+  throw new Error('SESSION_SECRET es obligatorio en producción.');
+}
+
+app.use(cookieSession({
   name: 'ventas.sid',
-  secret: process.env.SESSION_SECRET || 'solo-desarrollo-cambia-este-secreto',
-  resave: false,
-  saveUninitialized: false,
-  cookie: { httpOnly: true, sameSite: 'lax', secure: false, maxAge: 8 * 60 * 60 * 1000 },
+  keys: [sessionSecret],
+  httpOnly: true,
+  sameSite: 'lax',
+  secure: process.env.NODE_ENV === 'production',
+  maxAge: 8 * 60 * 60 * 1000,
 }));
 
 const asyncRoute = (handler) => (req, res, next) => Promise.resolve(handler(req, res, next)).catch(next);
@@ -47,7 +53,10 @@ app.post('/api/login', asyncRoute(async (req, res) => {
   res.json({ employee: rows[0] });
 }));
 
-app.post('/api/logout', (req, res) => req.session.destroy(() => res.json({ ok: true })));
+app.post('/api/logout', (req, res) => {
+  req.session = null;
+  res.json({ ok: true });
+});
 
 app.get('/api/employees', requireLogin, asyncRoute(async (_req, res) => {
   const [rows] = await pool.query('SELECT IdEmpleado AS id, Dni AS dni, Nombres AS name, Telefono AS phone, Estado AS state, User AS username FROM empleado ORDER BY IdEmpleado');
@@ -165,7 +174,11 @@ app.use((error, _req, res, _next) => {
   res.status(error.status || 500).json({ error: error.status ? error.message : 'Ocurrió un error al procesar la solicitud.' });
 });
 
-app.listen(port, () => console.log(`API de ventas disponible en http://localhost:${port}`));
+if (!process.env.VERCEL) {
+  app.listen(port, () => console.log(`API de ventas disponible en http://localhost:${port}`));
+}
+
+export default app;
 
 function readEmployee(body) {
   const employee = [
